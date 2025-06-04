@@ -1,18 +1,25 @@
-import java.util.Scanner;
 import java.util.ArrayList;
 import java.util.InputMismatchException;
+import java.util.Scanner; // Added for method parameters
 
+// UserInterface might be removed if ATM.run() is fully removed and Main handles all.
+// For now, ATM still implements UserInterface, but its run() method will be empty or removed.
 public class ATM implements UserInterface {
 
     private ArrayList<BankAccount> accounts;
-    private Scanner scanner;
-    private BankAccount currentAccount; // Will be null initially
+    // private Scanner scanner; // Removed
+    private BankAccount currentAccount;
+
+    // Action status constants to be returned by displayMenuAndProcessActions
+    public static final int ACTION_CONTINUE = 0;
+    public static final int ACTION_LOGOUT = 1;
+    public static final int ACTION_EXIT_SYSTEM = 2;
+
 
     public ATM() {
         accounts = new ArrayList<>();
-        scanner = new Scanner(System.in);
+        // scanner = new Scanner(System.in); // Removed
 
-        // Create sample accounts - account numbers are now auto-generated
         BankAccount acc1 = new BankAccount("John Doe", 1000);
         BankAccount acc2 = new BankAccount("Jane Smith", 500);
         BankAccount acc3 = new BankAccount("Peter Jones", 1500);
@@ -20,7 +27,6 @@ public class ATM implements UserInterface {
         accounts.add(acc2);
         accounts.add(acc3);
 
-        // For testing, print generated account numbers
         System.out.println("Available accounts (for testing/setup):");
         for (BankAccount acc : accounts) {
             System.out.println("Holder: " + acc.getAccountHolderName() + ", Number: " + acc.getAccountNumber() + ", Balance: " + acc.getBalance());
@@ -28,10 +34,11 @@ public class ATM implements UserInterface {
         System.out.println("------------------------------------");
     }
 
-    private boolean login() {
+    // Login method now accepts Scanner
+    public boolean login(Scanner scanner) {
         System.out.print("Enter Account Number: ");
         String enteredAccountNumber = scanner.next();
-        scanner.nextLine(); // Consume the rest of the line
+        scanner.nextLine(); // Consume newline
 
         for (BankAccount account : accounts) {
             if (account.getAccountNumber().equals(enteredAccountNumber)) {
@@ -45,50 +52,30 @@ public class ATM implements UserInterface {
         return false;
     }
 
-    @Override
-    public void run() {
-        if (accounts.isEmpty()) {
-            System.out.println("No accounts configured in the ATM. Exiting.");
-            return;
+    public void logout() {
+        if (this.currentAccount != null) {
+            System.out.println("Logging out " + this.currentAccount.getAccountHolderName() + "...");
         }
-
-        while (true) {
-            if (currentAccount == null) {
-                System.out.println("\nWelcome to the ATM. Please login.");
-                if (!login()) {
-                    // Optionally, give a few retries or directly exit
-                    System.out.println("Login failed. Would you like to try again? (yes/no)");
-                    String choice = scanner.nextLine().trim().toLowerCase();
-                    if (!choice.equals("yes")) {
-                        System.out.println("Exiting ATM. Thank you!");
-                        break; // Exit the main while loop
-                    }
-                    // If 'yes', the loop continues, and login() will be called again.
-                }
-            }
-
-            // If login was successful, or if already logged in from a previous iteration
-            if (currentAccount != null) {
-                displayMenuAndProcessActions();
-                // displayMenuAndProcessActions handles logout by setting currentAccount = null
-                // It also handles System.exit for "Exit ATM"
-                // If currentAccount becomes null (due to logout), the next iteration will prompt for login.
-            }
-
-            // This check is for non-interactive environments; System.exit is the primary exit for users.
-            if (currentAccount == null && !scanner.hasNextLine() && !System.console().writer().checkError()) {
-                 System.out.println("ATM session ended due to no further input.");
-                 break;
-            }
-        }
-        scanner.close(); // Close scanner when ATM is fully exiting
+        this.currentAccount = null;
     }
 
-    private void displayMenuAndProcessActions() {
-        // Ensure currentAccount is not null before proceeding (should be guaranteed by run() logic)
+    // run() from UserInterface. If Main takes over all looping, this might become obsolete
+    // or simply call a method in Main. For now, it's empty as per plan.
+    @Override
+    public void run() {
+        // This method's logic is effectively moved to Main.java
+        // It could be left empty, or throw an UnsupportedOperationException,
+        // or delegate to a new main loop driver in Main.java if necessary.
+        // For now, let's print a message indicating it's not the primary entry point.
+        System.out.println("ATM.run() called. Primary execution should be through Main.java's new loop.");
+    }
+
+
+    // displayMenuAndProcessActions now accepts Scanner and returns an action status
+    public int displayMenuAndProcessActions(Scanner scanner) {
         if (currentAccount == null) {
-             System.out.println("Error: No user logged in. Returning to login.");
-             return;
+            System.out.println("Error: No user logged in. Cannot display menu.");
+            return ACTION_LOGOUT; // Should lead to re-login
         }
 
         System.out.println("\nATM Menu (Account: " + currentAccount.getAccountNumber() + " | Holder: " + currentAccount.getAccountHolderName() + "):");
@@ -107,33 +94,35 @@ public class ATM implements UserInterface {
             switch (choice) {
                 case 1:
                     currentAccount.showBalance();
-                    break;
+                    return ACTION_CONTINUE;
                 case 2:
-                    performDeposit();
-                    break;
+                    performDeposit(scanner);
+                    return ACTION_CONTINUE;
                 case 3:
-                    performWithdraw();
-                    break;
+                    performWithdraw(scanner);
+                    return ACTION_CONTINUE;
                 case 4:
-                    System.out.println("Logging out " + currentAccount.getAccountHolderName() + "...");
-                    currentAccount = null; // This will trigger login prompt in the next iteration of run()
-                    break;
+                    logout(); // Sets currentAccount to null
+                    return ACTION_LOGOUT;
                 case 5:
                     System.out.println("Exiting ATM. Thank you for using our services!");
-                    System.exit(0); // Direct exit.
-                    break;
+                    return ACTION_EXIT_SYSTEM; // Signal to Main to exit
                 default:
                     System.out.println("Invalid choice. Please try again.");
+                    return ACTION_CONTINUE;
             }
         } catch (InputMismatchException e) {
             System.out.println("Invalid input. Please enter a number for menu choice.");
             scanner.nextLine(); // Consume the invalid input
+            return ACTION_CONTINUE; // Continue to show menu again
         }
     }
 
-    private void performDeposit() {
-        if (currentAccount == null) { // Should not happen if called from displayMenuAndProcessActions
-            System.out.println("Critical Error: performDeposit called without a logged-in account.");
+    // performDeposit now accepts Scanner
+    public void performDeposit(Scanner scanner) {
+        // currentAccount check is good, but should be guaranteed by calling context
+        if (currentAccount == null) {
+            System.out.println("Error: No account logged in for deposit.");
             return;
         }
         System.out.print("Enter deposit amount: ");
@@ -147,9 +136,10 @@ public class ATM implements UserInterface {
         }
     }
 
-    private void performWithdraw() {
-        if (currentAccount == null) { // Should not happen
-            System.out.println("Critical Error: performWithdraw called without a logged-in account.");
+    // performWithdraw now accepts Scanner
+    public void performWithdraw(Scanner scanner) {
+        if (currentAccount == null) {
+            System.out.println("Error: No account logged in for withdrawal.");
             return;
         }
         System.out.print("Enter withdrawal amount: ");
@@ -161,5 +151,18 @@ public class ATM implements UserInterface {
             System.out.println("Invalid amount. Please enter a number.");
             scanner.nextLine(); // Consume the invalid input
         }
+    }
+
+    public BankAccount getCurrentAccount() {
+        return currentAccount;
+    }
+
+    public boolean isUserLoggedIn() {
+        return currentAccount != null;
+    }
+
+    // Method to check if accounts exist (used by Main before starting)
+    public boolean hasAccounts() {
+        return !accounts.isEmpty();
     }
 }

@@ -39,4 +39,9 @@ public class BankAccount extends Account {
     public void setBalance(int balance) {
         this.balance = balance;
     }
+
+    // Method for resetting the static counter, intended for test purposes.
+    public static void resetNextAccountNumberSuffixForTesting() {
+        nextAccountNumberSuffix = 1;
+    }
 }
