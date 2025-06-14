@@ -1,9 +1,13 @@
+package account;
+
 public abstract class Account {
 
-	// 口座名義
+    // 口座名義
     protected String accountHolderName;
+    
     // 残高
     protected int balance;
+    
     // 口座番号
     protected String accountNumber;
 
@@ -15,11 +19,13 @@ public abstract class Account {
     
     // 残高表示処理用の抽象メソッドを定義
     public abstract void showBalance();
-
+    
+    // accountHolderNameのゲッター
     public String getAccountHolderName() {
         return accountHolderName;
     }
-
+    
+    // accountHolderNameのセッター
     public String getAccountNumber() {
         return accountNumber;
     }
